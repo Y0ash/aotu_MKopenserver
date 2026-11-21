@@ -1,0 +1,60 @@
+name: 麦块自动开服
+
+# GitHub 的 cron 一律按 UTC 走，北京时间 = UTC + 8。
+#   06:05 北京  →  前一天的 22:05 UTC
+#   18:05 北京  →  同一天 10:05 UTC
+on:
+  schedule:
+    - cron: '5 22 * * *'   # 北京时间每天 06:05 开机
+    - cron: '5 10 * * *'   # 北京时间每天 18:05 开机
+  workflow_dispatch:
+    inputs:
+      action:
+        description: '要执行的动作'
+        type: choice
+        default: start
+        options:
+          - start
+          - stop
+          - restart
+          - status
+      server:
+        description: '实例 identifier（8 位短 UUID），留空自动识别'
+        default: ''
+        required: false
+
+concurrency:
+  group: minekuai-server
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  control:
+    name: 控制麦块实例
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 查看状态
+        if: github.event_name == 'workflow_dispatch' && inputs.action == 'status'
+        env:
+          MINEKUAI_API_KEY: ${{ secrets.MINEKUAI_API_KEY }}
+        run: python mkctl.py status --server "${{ inputs.server }}"
+
+      - name: 执行动作
+        if: github.event_name != 'workflow_dispatch' || inputs.action != 'status'
+        env:
+          MINEKUAI_API_KEY: ${{ secrets.MINEKUAI_API_KEY }}
+        run: |
+          action="${{ inputs.action || 'start' }}"
+          echo "动作：$action"
+          python mkctl.py "$action" --server "${{ inputs.server }}" --wait --timeout 600
