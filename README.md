@@ -128,6 +128,19 @@ GitHub 的 `schedule` 是「尽力而为」，高峰期可能延迟几分钟到�
 **为什么用 UTC 不写 `timezone:`？**
 `timezone` 字段是新特性，写法不对会让整个 workflow 校验失败；UTC 写法在所有环境下都稳。
 
+## 实测记录（2026-11-21）
+
+部署完在 Actions 页手动触发了三次，全部 success：
+
+| run | 动作 | 结果 |
+| --- | --- | --- |
+| #1 | `status` | `麦块公益实例（b7f93908），状态 running` —— 密钥通了 |
+| #2 | `stop` | `running` → `offline`，用时约 21 秒 |
+| #3 | `start` | `offline` → `starting` → `running`，用时约 2 分钟 |
+
+也就是说 cron 到点跑的那条 `start` 路径已经真机验证过：先查状态、再发 `start`、
+轮询到 `running` 才退 0。
+
 ## 目录
 
 ```
